@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>旅遊行程規劃 (雲端同步版)</title>
+  <title>旅遊行程規劃 (雲端修正版)</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -259,10 +259,11 @@
     .popup-sub {font-size:11px;color:var(--t3);margin-bottom:7px;}
     .popup-desc{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px;}
     .popup-nav {
-      display:flex;align-items:center;justify-content:center;gap:6px;
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;
       background:linear-gradient(135deg,#1a73e8,#1557b0);
       color:white;border-radius:8px;padding:7px 12px;
       font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;
+      margin-top:6px;
     }
 
     .map-legend-ctrl{
@@ -507,7 +508,7 @@
 ═══════════════════════════════════════════════════════════ */
 const { createClient } = supabase;
 
-// 👇 請在這裡填寫你的 Anon Key 👇
+// 👇 請在這裡填寫你的 Publishable Key 👇
 const SUPABASE_URL = 'https://qbansvtxerdvrqqpjmzi.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_uuHDEyV_jchh123AlPfIPQ_KQoaBXBY'; 
 
@@ -533,7 +534,7 @@ let leafletMap = null;
 let markersLayer = null;
 let locateMarker = null;
 
-/* ─── 雲端讀寫 (取代原本的 localStorage) ─── */
+/* ─── 雲端讀寫 ─── */
 async function loadProjects(){
   try {
     const { data, error } = await _supabase
@@ -549,7 +550,6 @@ async function loadProjects(){
     if (data && data.data) {
       projects = data.data;
     } else {
-      // 雲端還沒有資料，載入預設值並自動存上雲端
       projects = [JSON.parse(JSON.stringify(DEFAULT_PROJECT))];
       await saveProjects();
     }
@@ -558,7 +558,6 @@ async function loadProjects(){
     projects = [];
   }
   
-  // 更新首頁與內頁畫面
   renderHome();
   if(currentProjId){
     updateTripHeader();
@@ -575,7 +574,7 @@ async function saveProjects(){
     
   if(error) {
     console.error('雲端同步失敗', error);
-    showToast('⚠️ 雲端同步失敗，請檢查網路');
+    showToast('⚠️ 雲端同步失敗，請檢查網路與金鑰');
   } else {
     console.log('✅ 已同步至 Supabase');
   }
@@ -672,7 +671,7 @@ async function saveProject(){
     showToast('🎉 計畫已建立！');
   }
   
-  await saveProjects(); // 異步寫入雲端
+  await saveProjects();
   closeModal('modal-project');
   renderHome();
   if(currentProjId && editingProjectId===currentProjId) updateTripHeader();
@@ -769,6 +768,7 @@ function switchDay(idx){
   if(leafletMap) updateMapMarkers();
 }
 
+/* 💡 修正 2：視圖切換時，強制更新地圖大小 */
 function switchView(view){
   const itin  = document.getElementById('view-itinerary');
   const mapV  = document.getElementById('view-map');
@@ -782,7 +782,13 @@ function switchView(view){
     itin.classList.add('hidden'); mapV.classList.add('show');
     btnM.classList.add('active'); btnI.classList.remove('active');
     document.getElementById('fab').style.display='none';
-    if(leafletMap){ setTimeout(()=>{ leafletMap.invalidateSize(); updateMapMarkers(); },100); }
+    
+    // 等待 DOM 展開後再渲染地圖，避免破圖或座標錯誤
+    setTimeout(() => { 
+        if(!leafletMap) initLeafletMap();
+        leafletMap.invalidateSize(); 
+        updateMapMarkers(); 
+    }, 150);
   }
 }
 
@@ -994,7 +1000,6 @@ async function generateHighlights(){
 
   try{
     const prompt = `你是旅遊達人。請為以下景點產生 3 條繁體中文「推薦亮點」。每條不超過20字。景點名稱：${name}${desc?`\n簡介：${desc}`:''}\n直接輸出3條，不加編號。`;
-    // 更新為 2026 年最新預覽版模型
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
     const res = await fetch(url, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1040,6 +1045,7 @@ async function doSearch(q){
     spinner.style.display='none'; renderSearchResults(data);
   } catch(e){ spinner.style.display='none'; }
 }
+
 function renderSearchResults(data){
   const results = document.getElementById('search-results');
   if(!data.length){ results.innerHTML = `<div style="padding:14px;text-align:center;color:var(--t3);font-size:13px;">😕 找不到結果</div>`; results.style.display='block'; return; }
@@ -1052,49 +1058,151 @@ function renderSearchResults(data){
   }).join('');
   results.style.display='block'; results._data = data;
 }
+
+/* 💡 修正 1：智慧提取副標題 */
 function selectPlace(idx){
-  const item = document.getElementById('search-results')._data[idx];
-  document.getElementById('inp-name').value = item.name || item.display_name.split(',')[0];
-  document.getElementById('inp-lat').value  = item.lat; document.getElementById('inp-lng').value  = item.lon;
-  document.getElementById('search-results').style.display='none';
+  const results = document.getElementById('search-results');
+  const item    = results._data[idx];
+  if(!item) return;
+
+  const name = item.name || item.display_name.split(',')[0];
+
+  let subtitle = '';
+  if(item.namedetails?.['name:en']) {
+      subtitle = item.namedetails['name:en'];
+  } else {
+      const parts = item.display_name.split(',');
+      if(parts.length > 1) subtitle = parts[1].trim();
+  }
+
+  document.getElementById('inp-name').value = name;
+  document.getElementById('inp-sub').value  = subtitle;
+  document.getElementById('inp-lat').value  = item.lat;
+  document.getElementById('inp-lng').value  = item.lon;
+  document.getElementById('inp-search').value = '';
+
+  results.style.display='none';
+  document.getElementById('selected-name-preview').textContent = name + (subtitle ? ` (${subtitle})` : '');
+  document.getElementById('selected-addr-preview').textContent = item.display_name;
   document.getElementById('selected-place').style.display='block';
-  document.getElementById('selected-name-preview').textContent = document.getElementById('inp-name').value;
 }
 
 /* ═══════════════════════════════════════════════════════════
    Leaflet 地圖功能
 ═══════════════════════════════════════════════════════════ */
 function initLeafletMap(){
-  if(leafletMap){ leafletMap.invalidateSize(); updateMapMarkers(); return; }
+  if(leafletMap) return;
   const proj = projects.find(p=>p.id===currentProjId);
   leafletMap = L.map('leaflet-map',{ center: proj?.mapCenter||[33.5902, 130.4017], zoom:14 });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom:19 }).addTo(leafletMap);
   markersLayer = L.layerGroup().addTo(leafletMap);
-  updateMapMarkers();
 }
+
 function makeIcon(color, num){
-  return L.divIcon({ className:'', html:`<div style="width:34px;height:34px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;border:2px solid rgba(255,255,255,0.3);">${num}</div>`, iconSize:[34,34], iconAnchor:[17,17] });
+  return L.divIcon({ className:'', html:`<div style="width:34px;height:34px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;border:2px solid rgba(255,255,255,0.3);box-shadow: 0 3px 8px rgba(0,0,0,0.4);">${num}</div>`, iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-18] });
 }
+
+/* 💡 修正 3：加入 Google Map 導航連結 */
 function updateMapMarkers(){
   if(!leafletMap || !markersLayer) return;
   markersLayer.clearLayers();
   const proj  = projects.find(p=>p.id===currentProjId);
   const stops = (proj?.stops||{})[currentDay]||[];
   const latlngs = [];
+  
   stops.forEach((stop,idx)=>{
     if(!stop.lat || !stop.lng) return;
     const ll = [stop.lat, stop.lng];
-    const marker = L.marker(ll, {icon: makeIcon('#ffa726', idx+1)}).bindPopup(`<b>${stop.name}</b>`);
+    const color = {sight:'#ffa726', food:'#66bb6a', shop:'#5c6bc0', transport:'#ef5350'}[stop.type] || '#ffa726';
+    
+    const popupHtml = `
+      <div class="popup-inner">
+        <div class="popup-time">${stop.time}</div>
+        <div class="popup-name">${stop.name}</div>
+        ${stop.sub?`<div class="popup-sub">${stop.sub}</div>`:''}
+        ${stop.desc?`<div class="popup-desc">${stop.desc}</div>`:''}
+        <a class="popup-nav" href="https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}" target="_blank">
+          🗺️ Google Maps 導航
+        </a>
+      </div>`;
+      
+    const marker = L.marker(ll, {icon: makeIcon(color, idx+1)}).bindPopup(popupHtml);
     markersLayer.addLayer(marker); latlngs.push(ll);
   });
+  
   if(latlngs.length>1) L.polyline(latlngs,{color:'rgba(240,98,146,0.7)',weight:2.5,dashArray:'6 4'}).addTo(markersLayer);
   if(latlngs.length) try{ leafletMap.fitBounds(L.latLngBounds(latlngs).pad(0.2)); }catch(e){}
 }
+
+/* 💡 修正 4：延遲飛越，確保地圖框架與氣泡能正常展開 */
 function flyToStop(stopId){
   const stop = ((projects.find(p=>p.id===currentProjId)?.stops||{})[currentDay]||[]).find(s=>s.id===stopId);
   if(!stop?.lat) return;
+  
   switchView('map');
-  setTimeout(()=> leafletMap.flyTo([stop.lat,stop.lng],16),200);
+  setTimeout(()=> {
+      if(leafletMap) {
+          leafletMap.invalidateSize();
+          leafletMap.flyTo([stop.lat,stop.lng], 16, {duration:1.2});
+          
+          markersLayer.eachLayer(l=>{
+              const ll = l.getLatLng();
+              if(ll && Math.abs(ll.lat-stop.lat)<0.0001 && Math.abs(ll.lng-stop.lng)<0.0001) {
+                  setTimeout(() => l.openPopup(), 1200); // 飛行結束後開氣泡
+              }
+          });
+      }
+  }, 300);
+}
+
+/* 💡 修正 5：修復定位按鈕無反應與錯誤處理 */
+function locateMe(){
+  const btn = document.querySelector('.locate-btn');
+  const icon = document.getElementById('locate-icon');
+  
+  if(!navigator.geolocation){ 
+      showToast('⚠️ 瀏覽器不支援定位'); 
+      return; 
+  }
+  
+  if(btn) btn.classList.add('locating');
+  if(icon) icon.textContent='⏳';
+  showToast('📍 正在取得位置...');
+
+  switchView('map');
+
+  navigator.geolocation.getCurrentPosition(pos=>{
+    if(btn) btn.classList.remove('locating');
+    if(icon) icon.textContent='📍';
+    
+    const ll = [pos.coords.latitude, pos.coords.longitude];
+
+    setTimeout(()=>{
+      if(!leafletMap){ initLeafletMap(); }
+      leafletMap.invalidateSize();
+      
+      if(locateMarker) leafletMap.removeLayer(locateMarker);
+      locateMarker = L.marker(ll,{
+        icon: L.divIcon({
+          className:'',
+          html:`<div style="position:relative;width:22px;height:22px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:#4fc3f7;border:3px solid white;box-shadow:0 0 0 5px rgba(79,195,247,0.25);"></div>
+            <div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(79,195,247,0.4);animation:pulsate 1.5s infinite;"></div>
+          </div>`,
+          iconSize:[22,22], iconAnchor:[11,11]
+        })
+      }).addTo(leafletMap).bindPopup('<b>📍 您的當前位置</b>').openPopup();
+
+      leafletMap.flyTo(ll, 16, {duration:1.5});
+      showToast('✅ 已定位到您的位置');
+    }, 300);
+    
+  }, err=>{
+    if(btn) btn.classList.remove('locating');
+    if(icon) icon.textContent='📍';
+    const msgs = {1:'請在網址列左側允許位置權限', 2:'無法取得位置資訊', 3:'定位請求逾時'};
+    showToast(`⚠️ ${msgs[err.code]||'定位失敗'}`);
+  }, {timeout:12000, enableHighAccuracy:true});
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1112,7 +1220,7 @@ function showToast(msg){
 
 // 🚀 啟動應用程式
 document.getElementById('fab').style.display='none';
-loadProjects(); // 觸發非同步的雲端載入
+loadProjects(); 
 
 </script>
 </body>
