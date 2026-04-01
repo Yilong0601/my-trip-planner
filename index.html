@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>旅遊行程規劃</title>
+  <title>旅遊行程規劃 (雲端同步版)</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <!-- Leaflet.js 真實互動地圖 -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -25,9 +26,7 @@
     ::-webkit-scrollbar-thumb{background:#3d4575;border-radius:4px;}
 
     /* ── 頁面層疊 ── */
-    /* 首頁（專案列表）*/
     #screen-home{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto;}
-    /* 旅程編輯頁 */
     #screen-trip{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;flex-direction:column;}
 
     /* ── 首頁 ── */
@@ -102,20 +101,17 @@
     .day-tabs-wrap{
       background:rgba(30,34,64,0.95);border-bottom:1px solid rgba(255,255,255,0.05);
       padding:8px 14px;
-      overflow-x:scroll;   /* 強制顯示捲軸區域 */
-      -webkit-overflow-scrolling:touch; /* iOS 慣性滑動 */
+      overflow-x:scroll;
+      -webkit-overflow-scrolling:touch;
       display:flex;gap:7px;position:sticky;top:72px;z-index:40;
       backdrop-filter:blur(12px);flex-shrink:0;
-      /* 右側淡出提示還有更多 */
       -webkit-mask:linear-gradient(to right,black calc(100% - 32px),transparent 100%);
       mask:linear-gradient(to right,black calc(100% - 32px),transparent 100%);
     }
     .day-tabs-wrap::-webkit-scrollbar{display:none;}
     .day-tab{
       display:inline-flex;flex-direction:column;align-items:center;
-      min-width:60px;    /* 固定最小寬度，不讓它被壓縮 */
-      flex-shrink:0;     /* 絕不縮小 */
-      padding:5px 9px;border-radius:12px;
+      min-width:60px;flex-shrink:0;padding:5px 9px;border-radius:12px;
       border:1.5px solid transparent;cursor:pointer;
       font-size:12px;font-weight:500;color:var(--t3);
       background:rgba(255,255,255,0.04);
@@ -126,14 +122,13 @@
       background:linear-gradient(135deg,var(--pink),var(--pinkd));
       color:white;box-shadow:0 4px 14px rgba(240,98,146,0.4);transform:translateY(-2px);
     }
-    /* 日期欄末尾的「＋天」按鈕 */
     .day-add-btn{
       display:inline-flex;align-items:center;justify-content:center;
       min-width:40px;flex-shrink:0;height:54px;border-radius:12px;
       border:1.5px dashed rgba(240,98,146,0.4);
       color:rgba(240,98,146,0.7);font-size:20px;
       cursor:pointer;transition:all .2s;background:rgba(240,98,146,0.04);
-      margin-right:24px; /* 右側留空讓 mask 效果可見 */
+      margin-right:24px;
     }
     .day-add-btn:hover{border-color:var(--pink);color:var(--pink);background:rgba(240,98,146,0.08);}
 
@@ -153,17 +148,6 @@
       color:white;box-shadow:0 4px 12px rgba(240,98,146,0.35);
     }
     .view-btn:not(.active):hover{color:var(--t2);background:rgba(255,255,255,0.06);}
-
-    /* 快速操作列 */
-    .quick-bar{display:flex;gap:7px;overflow-x:auto;padding:8px 14px 2px;flex-shrink:0;}
-    .quick-bar::-webkit-scrollbar{display:none;}
-    .quick-chip{
-      display:inline-flex;align-items:center;gap:4px;
-      background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
-      border-radius:20px;padding:4px 10px;font-size:11px;color:var(--t2);
-      white-space:nowrap;cursor:pointer;transition:all .2s;
-    }
-    .quick-chip:hover{background:rgba(255,255,255,0.11);color:var(--t1);}
 
     /* ── 行程視圖 ── */
     .itinerary-view{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
@@ -258,12 +242,8 @@
     .map-view{flex:1;display:none;flex-direction:column;min-height:0;}
     .map-view.show{display:flex;}
     #leaflet-map{flex:1;min-height:0;z-index:1;}
-
-    /* 深色地圖 filter */
     .leaflet-tile{filter:brightness(0.75) saturate(0.8) hue-rotate(180deg) invert(1);}
     .leaflet-container{background:#1a1d30;}
-
-    /* Leaflet popup 客製化 */
     .leaflet-popup-content-wrapper{
       background:var(--card)!important;border:1px solid rgba(255,255,255,0.1)!important;
       border-radius:14px!important;box-shadow:0 8px 32px rgba(0,0,0,0.5)!important;
@@ -284,9 +264,7 @@
       color:white;border-radius:8px;padding:7px 12px;
       font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;
     }
-    .popup-nav:hover{opacity:.9;}
 
-    /* 地圖右上圖例 */
     .map-legend-ctrl{
       background:rgba(19,22,42,0.92)!important;border:1px solid rgba(255,255,255,0.1)!important;
       border-radius:12px!important;padding:10px 12px!important;
@@ -295,6 +273,17 @@
     .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);margin-bottom:5px;}
     .legend-item:last-child{margin-bottom:0;}
     .legend-dot{width:10px;height:10px;border-radius:50%;}
+
+    .locate-btn{
+      position:absolute;bottom:130px;right:14px;z-index:20;
+      width:42px;height:42px;border-radius:13px;border:none;cursor:pointer;
+      background:rgba(19,22,42,0.95);border:1.5px solid rgba(255,255,255,0.15);
+      display:flex;align-items:center;justify-content:center;font-size:18px;
+      transition:all .2s;backdrop-filter:blur(10px);color:var(--t1);
+      box-shadow:0 4px 14px rgba(0,0,0,0.4);
+    }
+    .locate-btn:hover{background:rgba(240,98,146,0.25);border-color:var(--pink);}
+    .locate-btn.locating{border-color:var(--teal);animation:pulsate 1s infinite;}
 
     /* ── 浮動按鈕 ── */
     .fab{
@@ -333,7 +322,6 @@
       width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
       border-radius:10px;padding:9px 11px;color:var(--t1);font-size:13px;
       outline:none;transition:border-color .2s;margin-bottom:13px;
-      font-family:'Noto Sans TC',sans-serif;
     }
     .modal-input:focus,.modal-select:focus,.modal-textarea:focus{border-color:var(--pink);}
     .modal-select option{background:#1c2040;}
@@ -351,8 +339,6 @@
       background:rgba(255,255,255,0.06);color:var(--t2);font-size:13px;margin-top:7px;
     }
     .modal-cancel:hover{background:rgba(255,255,255,0.1);}
-
-    /* 分隔線 */
     .modal-sep{height:1px;background:rgba(255,255,255,0.07);margin:4px 0 14px;}
 
     /* ── Toast ── */
@@ -364,127 +350,78 @@
       opacity:0;pointer-events:none;transition:all .3s;white-space:nowrap;
     }
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-    /* ── 空狀態 ── */
     .empty-state{text-align:center;padding:50px 20px;color:var(--t3);}
     .empty-icon{font-size:44px;margin-bottom:14px;}
-
-    /* ── 定位按鈕：右下角，位於圖例上方 ── */
-    .locate-btn{
-      position:absolute;
-      bottom:130px;   /* 避開圖例（圖例約在 bottom:80px 高度 50px） */
-      right:14px;
-      z-index:20;     /* 高於 leaflet 地圖層但低於 modal */
-      width:42px;height:42px;border-radius:13px;border:none;cursor:pointer;
-      background:rgba(19,22,42,0.95);
-      border:1.5px solid rgba(255,255,255,0.15);
-      display:flex;align-items:center;justify-content:center;font-size:18px;
-      transition:all .2s;backdrop-filter:blur(10px);color:var(--t1);
-      box-shadow:0 4px 14px rgba(0,0,0,0.4);
-    }
-    .locate-btn:hover{background:rgba(240,98,146,0.25);border-color:var(--pink);}
-    .locate-btn.locating{border-color:var(--teal);animation:pulsate 1s infinite;}
-
-    /* 搜尋結果 */
     #search-results::-webkit-scrollbar{width:3px;}
     #search-results::-webkit-scrollbar-thumb{background:#3d4575;}
 
     @keyframes pulsate{0%,100%{box-shadow:0 0 0 0 rgba(38,198,218,0.5)}50%{box-shadow:0 0 0 6px rgba(38,198,218,0)}}
     @keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   </style>
 </head>
 <body>
 
-<!-- ════════════════════════════════════════════
-     首頁：專案列表
-════════════════════════════════════════════ -->
 <div id="screen-home">
   <div class="home-header">
     <div class="home-logo">✈️</div>
     <div class="home-title">旅遊行程規劃</div>
-    <div class="home-sub">管理你的所有旅遊計畫</div>
+    <div class="home-sub">管理你的所有旅遊計畫 (雲端同步中)</div>
   </div>
   <div class="project-list" id="project-list"></div>
   <button class="fab-new" onclick="openNewProjectModal()">＋ 新增旅遊計畫</button>
 </div>
 
-<!-- ════════════════════════════════════════════
-     旅程編輯頁
-════════════════════════════════════════════ -->
 <div id="screen-trip" style="display:none;">
-
-  <!-- 頂欄 -->
   <div class="trip-header">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <button onclick="goHome()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:10px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--t2);flex-shrink:0;" title="返回">←</button>
+        <button onclick="goHome()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:10px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--t2);flex-shrink:0;">←</button>
         <div>
-          <div class="trip-title" id="trip-title">旅遊計畫</div>
+          <div class="trip-title" id="trip-title">載入中...</div>
           <div class="trip-sub" id="trip-sub">載入中...</div>
         </div>
       </div>
       <div class="flex gap-1 flex-wrap justify-end">
-        <div class="badge badge-pink" onclick="openEditProjectModal()" title="編輯計畫資訊">⚙️ 編輯</div>
+        <div class="badge badge-pink" onclick="openEditProjectModal()">⚙️ 編輯</div>
         <div class="badge" id="badge-people">👥 -</div>
-        <div class="badge" onclick="openApiKeyModal()" title="設定 AI API Key" id="badge-api" style="color:var(--amber);border-color:rgba(255,167,38,0.3);">🤖 API</div>
+        <div class="badge" onclick="openApiKeyModal()" id="badge-api" style="color:var(--amber);border-color:rgba(255,167,38,0.3);">🤖 API</div>
       </div>
     </div>
   </div>
 
-  <!-- 日期欄 -->
   <div class="day-tabs-wrap" id="day-tabs"></div>
-
-  <!-- 視圖切換 -->
   <div class="view-toggle">
     <button class="view-btn active" id="btn-itinerary" onclick="switchView('itinerary')">🗓️ 行程</button>
     <button class="view-btn"        id="btn-map"       onclick="switchView('map')">🗺️ 地圖</button>
   </div>
 
-  <!-- 行程視圖 -->
   <div class="itinerary-view" id="view-itinerary">
     <div class="itinerary-content">
       <div id="timeline"></div>
     </div>
   </div>
 
-  <!-- 地圖視圖 -->
   <div class="map-view" id="view-map">
     <div id="leaflet-map"></div>
-    <!-- 定位按鈕放在右下角，避免與圖例重疊 -->
     <button class="locate-btn" onclick="locateMe()" title="定位我的位置">
       <span id="locate-icon">📍</span>
     </button>
   </div>
-
 </div>
 
-<!-- 浮動按鈕 -->
 <button class="fab" id="fab" onclick="toggleSortMode()">✏️ 調整行程順序</button>
 
-<!-- ════════════════════════════════════════════
-     Modals
-════════════════════════════════════════════ -->
-
-<!-- 新增/編輯 景點 Modal -->
 <div class="modal-overlay" id="modal-stop" onclick="closeModalIfBg(event,'modal-stop')">
   <div class="modal-box">
     <div class="modal-drag"></div>
     <div class="modal-title" id="stop-modal-title">新增景點</div>
-
-    <!-- ── 地點搜尋區（只在新增模式顯示）── -->
     <div id="search-section">
       <div class="modal-label">🔍 搜尋地點</div>
       <div style="position:relative;margin-bottom:6px;">
-        <input class="modal-input" id="inp-search"
-          placeholder="輸入中文或英文名稱搜尋..."
-          autocomplete="off" style="margin-bottom:0;padding-right:38px;"
-          oninput="onSearchInput(this.value)"/>
+        <input class="modal-input" id="inp-search" placeholder="輸入中文或英文名稱搜尋..." autocomplete="off" style="margin-bottom:0;padding-right:38px;" oninput="onSearchInput(this.value)"/>
         <span id="search-spinner" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:15px;">⏳</span>
       </div>
-      <!-- 搜尋下拉結果 -->
       <div id="search-results" style="display:none;background:#252a4a;border:1px solid rgba(255,255,255,0.12);border-radius:12px;overflow:hidden;margin-bottom:10px;max-height:200px;overflow-y:auto;"></div>
-      <!-- 已選地點確認條 -->
       <div id="selected-place" style="display:none;background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.3);border-radius:10px;padding:9px 12px;margin-bottom:12px;">
         <div style="font-size:10px;color:#66bb6a;font-weight:700;margin-bottom:2px;">✅ 已選地點（座標已自動填入）</div>
         <div id="selected-name-preview" style="font-size:13px;font-weight:600;color:var(--t1);"></div>
@@ -492,7 +429,6 @@
       </div>
       <div style="height:1px;background:rgba(255,255,255,0.07);margin:2px 0 12px;"></div>
     </div>
-
     <div class="modal-row">
       <div>
         <div class="modal-label">時間</div>
@@ -501,41 +437,24 @@
       <div>
         <div class="modal-label">類型</div>
         <select class="modal-select" id="inp-type">
-          <option value="sight">⛩️ 觀光</option>
-          <option value="food">🍜 餐飲</option>
-          <option value="shop">🛍️ 購物</option>
-          <option value="transport">✈️ 交通</option>
+          <option value="sight">⛩️ 觀光</option><option value="food">🍜 餐飲</option><option value="shop">🛍️ 購物</option><option value="transport">✈️ 交通</option>
         </select>
       </div>
     </div>
-    <div class="modal-label">景點名稱 *</div>
-    <input class="modal-input" id="inp-name" placeholder="搜尋後自動填入，或手動輸入"/>
-    <div class="modal-label">副標題（選填）</div>
-    <input class="modal-input" id="inp-sub" placeholder="例：Dazaifu Tenmangu"/>
-    <div class="modal-label">簡介（選填）</div>
-    <textarea class="modal-textarea" id="inp-desc" placeholder="景點描述..."></textarea>
-    <div class="modal-label">前往下一站的交通方式</div>
-    <input class="modal-input" id="inp-transport" placeholder="例：🚶 步行 10 分鐘"/>
+    <div class="modal-label">景點名稱 *</div><input class="modal-input" id="inp-name" placeholder="搜尋後自動填入，或手動輸入"/>
+    <div class="modal-label">副標題（選填）</div><input class="modal-input" id="inp-sub" placeholder="例：Dazaifu Tenmangu"/>
+    <div class="modal-label">簡介（選填）</div><textarea class="modal-textarea" id="inp-desc" placeholder="景點描述..."></textarea>
+    <div class="modal-label">前往下一站的交通方式</div><input class="modal-input" id="inp-transport" placeholder="例：🚶 步行 10 分鐘"/>
     <div class="modal-label">是否免費</div>
     <select class="modal-select" id="inp-free" onchange="onFreeChange(this.value)">
-      <option value="true">✓ 免費</option>
-      <option value="false">💴 付費</option>
+      <option value="true">✓ 免費</option><option value="false">💴 付費</option>
     </select>
-    <!-- 付費時才顯示的價格欄位 -->
     <div id="price-field" style="display:none;">
-      <div class="modal-label">票價 / 費用</div>
-      <input class="modal-input" id="inp-price" placeholder="例：¥800 / 免費入場 / NT$350"/>
+      <div class="modal-label">票價 / 費用</div><input class="modal-input" id="inp-price" placeholder="例：¥800 / 免費入場 / NT$350"/>
     </div>
-    <!-- 隱藏：存 lat/lng -->
-    <input type="hidden" id="inp-lat" value=""/>
-    <input type="hidden" id="inp-lng" value=""/>
-    <!-- AI 自動產生推薦亮點 -->
+    <input type="hidden" id="inp-lat" value=""/><input type="hidden" id="inp-lng" value=""/>
     <div style="height:1px;background:rgba(255,255,255,0.07);margin:4px 0 14px;"></div>
-    <button type="button" id="ai-highlights-btn" onclick="generateHighlights()"
-      style="width:100%;padding:10px;border-radius:12px;border:1.5px dashed rgba(240,98,146,0.5);background:rgba(240,98,146,0.06);color:var(--pink);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:14px;transition:all .2s;">
-      🤖 AI 自動產生推薦亮點
-    </button>
-    <!-- AI 結果預覽 -->
+    <button type="button" id="ai-highlights-btn" onclick="generateHighlights()" style="width:100%;padding:10px;border-radius:12px;border:1.5px dashed rgba(240,98,146,0.5);background:rgba(240,98,146,0.06);color:var(--pink);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:14px;transition:all .2s;">🤖 AI 自動產生推薦亮點</button>
     <div id="ai-highlights-preview" style="display:none;background:rgba(92,107,192,0.08);border:1px solid rgba(92,107,192,0.2);border-radius:10px;padding:10px 12px;margin-bottom:14px;">
       <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:6px;">✨ AI 建議亮點（可直接使用）</div>
       <div id="ai-highlights-list" style="font-size:12px;color:var(--t2);line-height:1.8;"></div>
@@ -546,46 +465,31 @@
   </div>
 </div>
 
-<!-- 新增/編輯 專案 Modal -->
 <div class="modal-overlay" id="modal-project" onclick="closeModalIfBg(event,'modal-project')">
   <div class="modal-box">
     <div class="modal-drag"></div>
     <div class="modal-title" id="proj-modal-title">新增旅遊計畫</div>
-    <div class="modal-label">計畫名稱 *</div>
-    <input class="modal-input" id="proj-name" placeholder="例：福岡家庭旅遊"/>
-    <div class="modal-label">目的地</div>
-    <input class="modal-input" id="proj-dest" placeholder="例：Fukuoka, Japan"/>
-    <div class="modal-label">計畫 Emoji</div>
-    <input class="modal-input" id="proj-emoji" placeholder="例：🌸" maxlength="4"/>
+    <div class="modal-label">計畫名稱 *</div><input class="modal-input" id="proj-name" placeholder="例：福岡家庭旅遊"/>
+    <div class="modal-label">目的地</div><input class="modal-input" id="proj-dest" placeholder="例：Fukuoka, Japan"/>
+    <div class="modal-label">計畫 Emoji</div><input class="modal-input" id="proj-emoji" placeholder="例：🌸" maxlength="4"/>
     <div class="modal-row">
-      <div>
-        <div class="modal-label">出發日期</div>
-        <input class="modal-input" id="proj-start" type="date"/>
-      </div>
-      <div>
-        <div class="modal-label">結束日期</div>
-        <input class="modal-input" id="proj-end" type="date"/>
-      </div>
+      <div><div class="modal-label">出發日期</div><input class="modal-input" id="proj-start" type="date"/></div>
+      <div><div class="modal-label">結束日期</div><input class="modal-input" id="proj-end" type="date"/></div>
     </div>
-    <div class="modal-label">旅遊人數</div>
-    <input class="modal-input" id="proj-people" type="number" min="1" max="99" placeholder="例：4"/>
-    <div class="modal-label">地圖中心點（緯度, 經度）</div>
-    <input class="modal-input" id="proj-center" placeholder="例：33.5902, 130.4017（福岡）"/>
+    <div class="modal-label">旅遊人數</div><input class="modal-input" id="proj-people" type="number" min="1" max="99" placeholder="例：4"/>
+    <div class="modal-label">地圖中心點（緯度, 經度）</div><input class="modal-input" id="proj-center" placeholder="例：33.5902, 130.4017"/>
     <div class="modal-sep"></div>
     <button class="modal-save" id="proj-save-btn" onclick="saveProject()">✅ 建立計畫</button>
     <button class="modal-cancel" onclick="closeModal('modal-project')">取消</button>
   </div>
 </div>
 
-<!-- API Key Modal -->
 <div class="modal-overlay" id="modal-apikey" onclick="closeModalIfBg(event,'modal-apikey')">
   <div class="modal-box">
     <div class="modal-drag"></div>
     <div class="modal-title">🤖 AI 功能設定</div>
     <div style="background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.25);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--t2);line-height:1.7;">
-      AI 自動產生推薦亮點需要 <b style="color:#4285f4;">Google Gemini API Key</b>。<br>
-      前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--pink);text-decoration:underline;">Google AI Studio</a> 免費取得 Key。<br>
-      Key 只存在您的瀏覽器本地，不會上傳。
+      設定您的 Google Gemini API Key 以啟用 AI 推薦功能。
     </div>
     <div class="modal-label">Gemini API Key</div>
     <input class="modal-input" id="inp-apikey" type="password" placeholder="AIza..."/>
@@ -595,96 +499,90 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- ════════════════════════════════════════════
-     JavaScript
-════════════════════════════════════════════ -->
 <script>
 /* ═══════════════════════════════════════════════════════════
-   資料結構
-   localStorage key: 'trip_projects'  → 專案清單陣列
-   每個專案:
-   {
-     id, name, dest, emoji, startDate, endDate, people, mapCenter,
-     days: [ {emoji, label, weekday}, … ],
-     stops: { 0: [ stopObj, … ], 1: [ … ], … }
-   }
-   每個景點:
-   {
-     id, time, name, sub, desc, type, free, transport, highlights,
-     lat, lng   ← Leaflet 用的真實座標
-   }
+   Supabase 雲端資料庫初始化
 ═══════════════════════════════════════════════════════════ */
+const { createClient } = supabase;
 
-// ── 內建預設專案 ──
+// 👇 請在這裡填寫你的 Anon Key 👇
+const SUPABASE_URL = 'https://qbansvtxerdvrqqpjmzi.supabase.co';
+const SUPABASE_KEY = '請貼上你的_Anon_Key'; 
+
+const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// 目前尚未串接 Firebase 登入，所以先使用一個固定的「測試帳號 ID」
+const TEMP_USER_ID = 'my_test_account_001';
+
 const DEFAULT_PROJECT = {
-  id: 'fukuoka_default',
-  name: '福岡家庭旅遊',
-  dest: 'Fukuoka, Japan',
-  emoji: '🌸',
-  startDate: '2026-08-01',
-  endDate:   '2026-08-06',
-  people: 4,
-  mapCenter: [33.5902, 130.4017],  // 福岡市中心
-  days: [
-    {emoji:'✈️',label:'第1天',weekday:'日'},
-    {emoji:'🎮',label:'第2天',weekday:'一'},
-    {emoji:'⛩️',label:'第3天',weekday:'二'},
-    {emoji:'🦊',label:'第4天',weekday:'三'},
-    {emoji:'🍜',label:'第5天',weekday:'四'},
-    {emoji:'🛫',label:'第6天',weekday:'五'},
-  ],
-  stops: {
-    0: [
-      {id:'s1',time:'09:00',name:'福岡機場',sub:'Fukuoka Airport',desc:'抵達福岡國際機場，辦理入境手續，領取行李後換取交通卡。',type:'transport',free:true,highlights:[],transport:'🚇 地鐵空港線 · 約5分鐘',lat:33.5858,lng:130.4511},
-      {id:'s2',time:'10:30',name:'東長寺',sub:'Tōchōji',desc:'博多最古老禪寺，日本最大木製大佛，朱色五重塔。',type:'sight',free:true,highlights:['日本最大木製大佛 — 莊嚴壯觀','朱色五重塔 — 絕佳拍照景點','地下戒壇 — 黑暗體驗，免費入場'],transport:'🚶 步行 · 約8分鐘',lat:33.5910,lng:130.4133},
-      {id:'s3',time:'11:30',name:'博多站',sub:'Hakata Station',desc:'福岡交通樞紐，周邊有豐富商場與美食，可先辦理酒店行李寄存。',type:'shop',free:true,highlights:['博多阪急百貨 — 伴手禮零食掃貨必去','博多拉麵街 — 9家拉麵名店集結'],transport:'🚶 步行 · 約10分鐘',lat:33.5898,lng:130.4208},
-      {id:'s4',time:'13:00',name:'承天寺',sub:'Jōtenji',desc:'烏龍麵與蕎麥麵的發祥地，境內有枯山水庭園，清靜雅致。',type:'sight',free:true,highlights:['枯山水庭園 — 免費開放','博多織的發祥地'],transport:'🚶 步行 · 約5分鐘',lat:33.5921,lng:130.4082},
-      {id:'s5',time:'15:45',name:'櫛田神社',sub:'Kushida Shrine',desc:'博多守護神社，常設博多祇園山笠展示，山笠高達15m！',type:'sight',free:true,highlights:['飾り山笠 — 常設高達15m山笠展示','夫婦惠比須神社 — 求良緣商業繁盛','博多祇園山笠展示（免費）'],transport:'🚇 地鐵 · 前往中洲川端',lat:33.5942,lng:130.4126},
-      {id:'s6',time:'17:00',name:'福岡タワー',sub:'Fukuoka Tower',desc:'日本最高的海濱塔，高234m，可俯瞰博多灣夕陽美景。',type:'sight',free:false,highlights:['觀景台高123m — 360°全景','夕陽時段尤為壯觀'],transport:'',lat:33.5930,lng:130.3543},
-    ],
-    1: [
-      {id:'s7',time:'09:30',name:'大濠公園',sub:'Ōhori Park',desc:'福岡市中心最大公園，圍繞人工湖，可租船遊湖或晨跑。',type:'sight',free:true,highlights:['人工湖泛舟 — 親子同樂','日本庭園 — ¥240 入場'],transport:'🚇 地鐵 · 約10分鐘',lat:33.5842,lng:130.3773},
-      {id:'s8',time:'11:30',name:'福岡城跡',sub:'Fukuoka Castle Ruins',desc:'江戶時代城堡遺跡，春季有大量櫻花，現為舞鶴公園。',type:'sight',free:true,highlights:['石垣遺跡 — 歷史厚重感','春季賞櫻必去'],transport:'🚶 步行 · 約15分鐘',lat:33.5862,lng:130.3830},
-      {id:'s9',time:'14:00',name:'天神地下街',sub:'Tenjin Chikagai',desc:'全長590m的地下購物街，600家以上商店，雨天也能盡情購物。',type:'shop',free:true,highlights:['600+商店 — 服飾美食一條龍','連接天神各大百貨'],transport:'',lat:33.5898,lng:130.3985},
-    ],
-    2: [
-      {id:'s10',time:'08:30',name:'太宰府天滿宮',sub:'Dazaifu Tenmangu',desc:'全國天滿宮總本社，學問之神菅原道真長眠之地，梅花美麗。',type:'sight',free:true,highlights:['學問之神 — 考生必拜','梅ヶ枝餅 — 名物必吃'],transport:'🚌 西鐵巴士 · 約30分鐘',lat:33.5124,lng:130.5314},
-      {id:'s11',time:'11:00',name:'九州國立博物館',sub:'Kyushu National Museum',desc:'日本第4個國立博物館，造型前衛，收藏豐富的亞洲文物。',type:'sight',free:false,highlights:['常設展 ¥700','從太宰府天滿宮步行可達'],transport:'',lat:33.5133,lng:130.5357},
-    ],
-  }
+  id: 'fukuoka_default', name: '福岡家庭旅遊', dest: 'Fukuoka, Japan', emoji: '🌸', startDate: '2026-08-01', endDate: '2026-08-06', people: 4, mapCenter: [33.5902, 130.4017],
+  days: [{emoji:'✈️',label:'第1天',weekday:'日'}], stops: {}
 };
 
-/* ─── 資料讀寫 ─── */
-function loadProjects(){
-  const raw = localStorage.getItem('trip_projects');
-  if(raw){ try{ return JSON.parse(raw); }catch(e){} }
-  // 首次使用：存入預設專案
-  const defaults = [JSON.parse(JSON.stringify(DEFAULT_PROJECT))];
-  localStorage.setItem('trip_projects', JSON.stringify(defaults));
-  return defaults;
-}
-function saveProjects(){ localStorage.setItem('trip_projects', JSON.stringify(projects)); }
-
-/* ─── 全域狀態 ─── */
-let projects     = loadProjects();
-let currentProjId = null;   // 目前開啟的專案 id
-let currentDay   = 0;
-let sortable     = null;
-let sortMode     = false;
-let editingStopId    = null;  // 編輯景點時的 id，null = 新增
-let insertAfterIdx   = -1;
-let editingProjectId = null;  // 編輯專案時的 id，null = 新增
-
-// Leaflet 地圖相關
-let leafletMap   = null;
+let projects = [];
+let currentProjId = null; 
+let currentDay = 0;
+let sortable = null;
+let sortMode = false;
+let editingStopId = null;  
+let insertAfterIdx = -1;
+let editingProjectId = null; 
+let leafletMap = null;
 let markersLayer = null;
 let locateMarker = null;
 
+/* ─── 雲端讀寫 (取代原本的 localStorage) ─── */
+async function loadProjects(){
+  try {
+    const { data, error } = await _supabase
+      .from('cloud_trips')
+      .select('data')
+      .eq('user_id', TEMP_USER_ID)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('讀取雲端失敗:', error);
+    }
+
+    if (data && data.data) {
+      projects = data.data;
+    } else {
+      // 雲端還沒有資料，載入預設值並自動存上雲端
+      projects = [JSON.parse(JSON.stringify(DEFAULT_PROJECT))];
+      await saveProjects();
+    }
+  } catch(e) {
+    console.error(e);
+    projects = [];
+  }
+  
+  // 更新首頁與內頁畫面
+  renderHome();
+  if(currentProjId){
+    updateTripHeader();
+    renderDayTabs();
+    renderTimeline();
+    if(leafletMap) updateMapMarkers();
+  }
+}
+
+async function saveProjects(){ 
+  const { error } = await _supabase
+    .from('cloud_trips')
+    .upsert({ user_id: TEMP_USER_ID, data: projects });
+    
+  if(error) {
+    console.error('雲端同步失敗', error);
+    showToast('⚠️ 雲端同步失敗，請檢查網路');
+  } else {
+    console.log('✅ 已同步至 Supabase');
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════
-   首頁：專案列表
+   首頁與專案管理
 ═══════════════════════════════════════════════════════════ */
 function renderHome(){
   const list = document.getElementById('project-list');
@@ -698,8 +596,8 @@ function renderHome(){
     return `
     <div class="project-card" onclick="openProject('${p.id}')">
       <div class="project-actions" onclick="event.stopPropagation()">
-        <button class="proj-btn proj-btn-edit" onclick="openEditProjectModal('${p.id}')" title="編輯">✏️</button>
-        <button class="proj-btn proj-btn-del"  onclick="deleteProject('${p.id}')"        title="刪除">🗑️</button>
+        <button class="proj-btn proj-btn-edit" onclick="openEditProjectModal('${p.id}')">✏️</button>
+        <button class="proj-btn proj-btn-del"  onclick="deleteProject('${p.id}')">🗑️</button>
       </div>
       <div class="project-emoji">${p.emoji||'✈️'}</div>
       <div class="project-name">${p.name}</div>
@@ -714,9 +612,6 @@ function calcNights(s,e){
   return Math.max(0, Math.round(diff));
 }
 
-/* ═══════════════════════════════════════════════════════════
-   專案 CRUD
-═══════════════════════════════════════════════════════════ */
 function openNewProjectModal(){
   editingProjectId = null;
   document.getElementById('proj-modal-title').textContent = '✈️ 新增旅遊計畫';
@@ -743,7 +638,7 @@ function openEditProjectModal(projId){
   openModal('modal-project');
 }
 
-function saveProject(){
+async function saveProject(){
   const name   = document.getElementById('proj-name').value.trim();
   if(!name){ showToast('⚠️ 請輸入計畫名稱'); return; }
   const dest    = document.getElementById('proj-dest').value.trim();
@@ -752,25 +647,21 @@ function saveProject(){
   const end     = document.getElementById('proj-end').value;
   const people  = parseInt(document.getElementById('proj-people').value)||2;
   const centerTxt = document.getElementById('proj-center').value.trim();
-  let mapCenter = [35.6812, 139.7671]; // 預設東京
+  let mapCenter = [35.6812, 139.7671]; 
   if(centerTxt){
     const parts = centerTxt.split(',').map(s=>parseFloat(s.trim()));
     if(parts.length===2 && !isNaN(parts[0]) && !isNaN(parts[1])) mapCenter = parts;
   }
 
   if(editingProjectId){
-    // 更新現有專案
     const proj = projects.find(p=>p.id===editingProjectId);
     if(proj){
       proj.name=name; proj.dest=dest; proj.emoji=emoji;
       proj.startDate=start; proj.endDate=end; proj.people=people; proj.mapCenter=mapCenter;
-      // 重算天數（若日期有變）
       if(start&&end) proj.days = buildDays(start,end);
     }
     showToast('✅ 計畫已更新');
   } else {
-    // 新建專案
-    const nights = calcNights(start,end);
     const proj = {
       id: 'p'+Date.now(),
       name, dest, emoji, startDate:start, endDate:end, people, mapCenter,
@@ -780,22 +671,21 @@ function saveProject(){
     projects.push(proj);
     showToast('🎉 計畫已建立！');
   }
-  saveProjects();
+  
+  await saveProjects(); // 異步寫入雲端
   closeModal('modal-project');
   renderHome();
-  // 若在旅程頁且是編輯當前專案，更新標題
   if(currentProjId && editingProjectId===currentProjId) updateTripHeader();
 }
 
-function deleteProject(id){
-  if(!confirm('確定要刪除這個旅遊計畫嗎？\n（所有行程資料將一併刪除）')) return;
+async function deleteProject(id){
+  if(!confirm('確定要刪除這個旅遊計畫嗎？')) return;
   projects = projects.filter(p=>p.id!==id);
-  saveProjects();
+  await saveProjects();
   renderHome();
   showToast('🗑️ 計畫已刪除');
 }
 
-// 根據日期範圍自動生成天數陣列
 function buildDays(start, end){
   const days  = [];
   const weeki = ['日','一','二','三','四','五','六'];
@@ -811,7 +701,7 @@ function buildDays(start, end){
 }
 
 /* ═══════════════════════════════════════════════════════════
-   旅程頁
+   旅程頁面功能
 ═══════════════════════════════════════════════════════════ */
 function openProject(id){
   currentProjId = id;
@@ -830,7 +720,6 @@ function goHome(){
   document.getElementById('screen-home').style.display = 'flex';
   document.getElementById('screen-trip').style.display = 'none';
   document.getElementById('fab').style.display = 'none';
-  // 確保回首頁時行程視圖可見
   switchView('itinerary');
   renderHome();
 }
@@ -844,7 +733,17 @@ function updateTripHeader(){
   document.getElementById('badge-people').textContent = `👥 ${proj.people||'-'}人`;
 }
 
-/* ─── 日期欄 ─── */
+async function addDay(){
+  const proj = projects.find(p=>p.id===currentProjId);
+  if(!proj) return;
+  const n = proj.days.length+1;
+  const emojis=['📅','🌅','☀️','🌙','🎯','🎪','🌟','🎭','🎨','🍜'];
+  proj.days.push({emoji:emojis[n%emojis.length], label:`第${n}天`, weekday:'─'});
+  await saveProjects();
+  renderDayTabs();
+  showToast(`✅ 已新增第${n}天`);
+}
+
 function renderDayTabs(){
   const proj = projects.find(p=>p.id===currentProjId);
   if(!proj) return;
@@ -855,64 +754,41 @@ function renderDayTabs(){
       <span style="font-size:11px;font-weight:600;">${d.label}</span>
       <span style="font-size:10px;color:${i===currentDay?'rgba(255,255,255,0.7)':'var(--t3)'};">${d.weekday}</span>
     </div>`).join('')
-  + `<div class="day-add-btn" onclick="addDay()" title="新增一天">＋</div>`;
-  // 將選中的 tab 捲動到可見範圍
+  + `<div class="day-add-btn" onclick="addDay()">＋</div>`;
   setTimeout(()=>{
     const active = document.getElementById(`day-tab-${currentDay}`);
     if(active) active.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
   }, 50);
 }
 
-function addDay(){
-  const proj = projects.find(p=>p.id===currentProjId);
-  if(!proj) return;
-  const n = proj.days.length+1;
-  const emojis=['📅','🌅','☀️','🌙','🎯','🎪','🌟','🎭','🎨','🍜'];
-  proj.days.push({emoji:emojis[n%emojis.length], label:`第${n}天`, weekday:'─'});
-  saveProjects();
-  renderDayTabs();
-  showToast(`✅ 已新增第${n}天`);
-}
-
 function switchDay(idx){
   currentDay = idx;
   if(sortMode) toggleSortMode();
-  renderDayTabs();    // 重新渲染整列，才能正確切換 active 高亮
+  renderDayTabs();   
   renderTimeline();
   if(leafletMap) updateMapMarkers();
 }
 
-/* ─── 視圖切換 ─── */
 function switchView(view){
   const itin  = document.getElementById('view-itinerary');
   const mapV  = document.getElementById('view-map');
   const btnI  = document.getElementById('btn-itinerary');
   const btnM  = document.getElementById('btn-map');
   if(view==='itinerary'){
-    itin.classList.remove('hidden');
-    mapV.classList.remove('show');
-    btnI.classList.add('active');
-    btnM.classList.remove('active');
+    itin.classList.remove('hidden'); mapV.classList.remove('show');
+    btnI.classList.add('active'); btnM.classList.remove('active');
     document.getElementById('fab').style.display='';
   } else {
-    itin.classList.add('hidden');
-    mapV.classList.add('show');
-    btnM.classList.add('active');
-    btnI.classList.remove('active');
+    itin.classList.add('hidden'); mapV.classList.add('show');
+    btnM.classList.add('active'); btnI.classList.remove('active');
     document.getElementById('fab').style.display='none';
     if(leafletMap){ setTimeout(()=>{ leafletMap.invalidateSize(); updateMapMarkers(); },100); }
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   行程渲染 (Timeline)
-═══════════════════════════════════════════════════════════ */
 function getTagHtml(type, free, price){
   const map={sight:`<span class="tag tag-sight">⛩️ 觀光</span>`,food:`<span class="tag tag-food">🍜 餐飲</span>`,shop:`<span class="tag tag-shop">🛍️ 購物</span>`,transport:`<span class="tag tag-sight">✈️ 交通</span>`};
-  const freeTag = free
-    ? `<span class="tag tag-free">✓ 免費</span>`
-    : `<span class="tag tag-paid">💴 ${price||'付費'}</span>`;
-  return (map[type]||'') + freeTag;
+  return (map[type]||'') + (free ? `<span class="tag tag-free">✓ 免費</span>` : `<span class="tag tag-paid">💴 ${price||'付費'}</span>`);
 }
 
 function renderTimeline(){
@@ -925,20 +801,17 @@ function renderTimeline(){
   }
   let html='';
   stops.forEach((stop,idx)=>{
-    const hl = (stop.highlights||[]).length
-      ? `<div style="margin-bottom:9px;"><div class="highlights-title">🚀 推薦亮點</div>${stop.highlights.map(h=>`<div class="highlight-item">${h}</div>`).join('')}</div>`:'';
+    const hl = (stop.highlights||[]).length ? `<div style="margin-bottom:9px;"><div class="highlights-title">🚀 推薦亮點</div>${stop.highlights.map(h=>`<div class="highlight-item">${h}</div>`).join('')}</div>`:'';
     html+=`
     <div class="stop-row" data-id="${stop.id}">
       <div class="stop-left">
-        <div class="stop-time">${stop.time}</div>
-        <div class="stop-dot"></div>
-        <div class="stop-line"></div>
+        <div class="stop-time">${stop.time}</div><div class="stop-dot"></div><div class="stop-line"></div>
       </div>
       <div style="flex:1">
         <div class="stop-card">
           <div class="card-actions">
-            <button class="card-icon-btn btn-edit"   onclick="openEditModal('${stop.id}')" title="編輯">✏️</button>
-            <button class="card-icon-btn btn-delete" onclick="deleteStop('${stop.id}')"   title="刪除">🗑️</button>
+            <button class="card-icon-btn btn-edit" onclick="openEditModal('${stop.id}')">✏️</button>
+            <button class="card-icon-btn btn-delete" onclick="deleteStop('${stop.id}')">🗑️</button>
           </div>
           <div class="stop-num">${idx+1}</div>
           <div class="stop-name">${stop.name}</div>
@@ -946,11 +819,7 @@ function renderTimeline(){
           ${stop.desc?`<div class="stop-desc">${stop.desc}</div>`:''}
           <div class="tags">${getTagHtml(stop.type,stop.free,stop.price)}</div>
           ${hl}
-          <div class="action-btns">
-            <span class="act-btn" onclick="flyToStop('${stop.id}')">🗺️ 地圖定位</span>
-            <span class="act-btn">🍽️ 附近餐廳</span>
-            <span class="act-btn">🏪 便利店</span>
-          </div>
+          <div class="action-btns"><span class="act-btn" onclick="flyToStop('${stop.id}')">🗺️ 地圖定位</span></div>
         </div>
       </div>
     </div>
@@ -963,478 +832,6 @@ function renderTimeline(){
   initSortable();
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Leaflet.js 真實地圖
-═══════════════════════════════════════════════════════════ */
-function initLeafletMap(){
-  if(leafletMap){ leafletMap.invalidateSize(); updateMapMarkers(); return; }
-  const proj   = projects.find(p=>p.id===currentProjId);
-  const center = proj?.mapCenter || [33.5902, 130.4017];
-
-  leafletMap = L.map('leaflet-map',{
-    center, zoom:14,
-    zoomControl: true,
-    attributionControl: true
-  });
-
-  // OpenStreetMap 圖層（免費、無需 API key）
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap contributors',
-    maxZoom:19
-  }).addTo(leafletMap);
-
-  markersLayer = L.layerGroup().addTo(leafletMap);
-
-  // 圖例控制項
-  const legend = L.control({position:'bottomright'});
-  legend.onAdd = ()=>{
-    const d = L.DomUtil.create('div','map-legend-ctrl');
-    d.innerHTML=`
-      <div class="legend-item"><div class="legend-dot" style="background:#ffa726;"></div>觀光</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#66bb6a;"></div>餐飲</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#5c6bc0;"></div>購物</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#ef5350;"></div>交通</div>`;
-    return d;
-  };
-  legend.addTo(leafletMap);
-  updateMapMarkers();
-}
-
-// 自訂彩色圓形標記
-function makeIcon(color, num){
-  return L.divIcon({
-    className:'',
-    html:`<div style="width:34px;height:34px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,0.4);border:2px solid rgba(255,255,255,0.3);">${num}</div>`,
-    iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-20]
-  });
-}
-
-const TYPE_COLOR = {sight:'#ffa726', food:'#66bb6a', shop:'#5c6bc0', transport:'#ef5350'};
-
-function updateMapMarkers(){
-  if(!leafletMap || !markersLayer) return;
-  markersLayer.clearLayers();
-  const proj  = projects.find(p=>p.id===currentProjId);
-  const stops = (proj?.stops||{})[currentDay]||[];
-  const latlngs = [];
-
-  stops.forEach((stop,idx)=>{
-    if(!stop.lat || !stop.lng) return;
-    const ll    = [stop.lat, stop.lng];
-    const color = TYPE_COLOR[stop.type]||'#ffa726';
-    const popup = L.popup({maxWidth:240, closeButton:true}).setContent(`
-      <div class="popup-inner">
-        <div class="popup-time">${stop.time}</div>
-        <div class="popup-name">${stop.name}</div>
-        ${stop.sub?`<div class="popup-sub">${stop.sub}</div>`:''}
-        ${stop.desc?`<div class="popup-desc">${stop.desc}</div>`:''}
-        <a class="popup-nav" href="https://maps.google.com/?q=${stop.lat},${stop.lng}" target="_blank">
-          🗺️ Google Maps 導航
-        </a>
-      </div>`);
-    const marker = L.marker(ll, {icon: makeIcon(color, idx+1)}).bindPopup(popup);
-    markersLayer.addLayer(marker);
-    latlngs.push(ll);
-  });
-
-  // 畫路線折線
-  markersLayer.eachLayer(l=>{ if(l._path) markersLayer.removeLayer(l); });
-  if(latlngs.length>1){
-    L.polyline(latlngs,{color:'rgba(240,98,146,0.7)',weight:2.5,dashArray:'6 4'}).addTo(markersLayer);
-  }
-
-  // 自動縮放視野以包含所有標記
-  if(latlngs.length){
-    try{ leafletMap.fitBounds(L.latLngBounds(latlngs).pad(0.2)); }catch(e){}
-  } else {
-    const proj = projects.find(p=>p.id===currentProjId);
-    if(proj?.mapCenter) leafletMap.setView(proj.mapCenter, 14);
-  }
-}
-
-// 從行程卡片跳到地圖對應標記
-function flyToStop(stopId){
-  const proj  = projects.find(p=>p.id===currentProjId);
-  const stops = (proj?.stops||{})[currentDay]||[];
-  const stop  = stops.find(s=>s.id===stopId);
-  if(!stop?.lat) { showToast('⚠️ 此景點尚未設定座標'); return; }
-  switchView('map');
-  setTimeout(()=>{
-    leafletMap.flyTo([stop.lat,stop.lng],16,{duration:1.2});
-    // 打開對應彈窗
-    markersLayer.eachLayer(l=>{
-      if(l.getLatLng && Math.abs(l.getLatLng().lat-stop.lat)<0.0001) l.openPopup();
-    });
-  },200);
-}
-
-// 定位使用者位置
-function locateMe(){
-  if(!navigator.geolocation){ showToast('⚠️ 瀏覽器不支援定位'); return; }
-  const btn = document.querySelector('.locate-btn');
-  const icon = document.getElementById('locate-icon');
-  btn?.classList.add('locating');
-  if(icon) icon.textContent='⏳';
-  showToast('📍 正在取得位置...');
-
-  // 先切換到地圖視圖，確保地圖可見
-  switchView('map');
-
-  navigator.geolocation.getCurrentPosition(pos=>{
-    btn?.classList.remove('locating');
-    if(icon) icon.textContent='📍';
-    const ll = [pos.coords.latitude, pos.coords.longitude];
-    // 確保地圖已初始化
-    if(!leafletMap){ initLeafletMap(); }
-    setTimeout(()=>{
-      if(locateMarker) leafletMap.removeLayer(locateMarker);
-      locateMarker = L.marker(ll,{
-        icon: L.divIcon({
-          className:'',
-          html:`<div style="position:relative;width:22px;height:22px;">
-            <div style="width:22px;height:22px;border-radius:50%;background:#4fc3f7;border:3px solid white;box-shadow:0 0 0 5px rgba(79,195,247,0.25);"></div>
-            <div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(79,195,247,0.4);animation:pulsate 1.5s infinite;"></div>
-          </div>`,
-          iconSize:[22,22], iconAnchor:[11,11]
-        })
-      }).addTo(leafletMap).bindPopup('<b>📍 您的位置</b>').openPopup();
-      leafletMap.flyTo(ll, 16, {duration:1.5});
-      showToast('✅ 已定位到您的位置');
-    }, 150);
-  }, err=>{
-    btn?.classList.remove('locating');
-    if(icon) icon.textContent='📍';
-    const msgs = {1:'請允許位置存取權限',2:'無法取得位置資訊',3:'定位請求逾時'};
-    showToast(`⚠️ ${msgs[err.code]||'定位失敗'}`);
-  },{timeout:12000, enableHighAccuracy:true});
-}
-
-/* ═══════════════════════════════════════════════════════════
-   景點 CRUD
-═══════════════════════════════════════════════════════════ */
-function genId(){ return 's'+Date.now()+Math.random().toString(36).slice(2,6); }
-
-/* ── 地點搜尋（Nominatim / OpenStreetMap，免費無需 API Key）── */
-let _searchTimer = null;
-
-function onSearchInput(val){
-  clearTimeout(_searchTimer);
-  const results = document.getElementById('search-results');
-  if(!val || val.length < 2){ results.style.display='none'; return; }
-  document.getElementById('search-spinner').style.display='';
-  // 防抖：等使用者停止輸入 500ms 再發請求
-  _searchTimer = setTimeout(()=> doSearch(val), 500);
-}
-
-async function doSearch(q){
-  const spinner = document.getElementById('search-spinner');
-  const results = document.getElementById('search-results');
-  try{
-    // Nominatim 搜尋 API：免費，支援中英文，無需 key
-    // 用當前專案的地圖中心點做 viewbox 偏向，讓結果更準確
-    const proj = projects.find(p=>p.id===currentProjId);
-    const center = proj?.mapCenter || [35.6812,139.7671];
-    const vb = `${center[1]-2},${center[0]-2},${center[1]+2},${center[0]+2}`;
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&namedetails=1&accept-language=zh-TW,en&viewbox=${vb}&bounded=0`;
-    const res  = await fetch(url, {headers:{'Accept-Language':'zh-TW,en'}});
-    const data = await res.json();
-    spinner.style.display='none';
-    renderSearchResults(data);
-  } catch(e){
-    spinner.style.display='none';
-    results.innerHTML = `<div style="padding:14px;text-align:center;color:var(--t3);font-size:13px;">⚠️ 搜尋失敗，請稍後再試</div>`;
-    results.style.display='block';
-  }
-}
-
-function renderSearchResults(data){
-  const results = document.getElementById('search-results');
-  if(!data.length){
-    results.innerHTML = `<div style="padding:14px;text-align:center;color:var(--t3);font-size:13px;">😕 找不到結果，試試換個關鍵字</div>`;
-    results.style.display='block'; return;
-  }
-  results.innerHTML = data.map((item,i)=>{
-    // 取得顯示名稱：優先用 local name，否則用 display_name 第一段
-    const name    = item.name || item.display_name.split(',')[0];
-    const address = item.display_name;
-    // 根據類型決定 emoji
-    const typeEmoji = {tourism:'⛩️',restaurant:'🍜',cafe:'☕',shop:'🛍️',
-      station:'🚉',airport:'✈️',hotel:'🏨',park:'🌿',museum:'🏛️',
-      temple:'⛩️',shrine:'⛩️',hospital:'🏥'}[item.type]
-      || {place:'📍',amenity:'🏢',tourism:'⛩️',leisure:'🌿',shop:'🛍️',
-          highway:'🛣️',railway:'🚉',aeroway:'✈️',historic:'🏛️'}[item.class]
-      || '📍';
-    return `<div onclick="selectPlace(${i})"
-      data-lat="${item.lat}" data-lng="${item.lon}"
-      data-name="${name.replace(/"/g,'&quot;')}"
-      data-addr="${address.replace(/"/g,'&quot;')}"
-      style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;transition:background .15s;"
-      onmouseover="this.style.background='rgba(240,98,146,0.1)'"
-      onmouseout="this.style.background=''">
-      <div style="display:flex;align-items:flex-start;gap:8px;">
-        <span style="font-size:16px;flex-shrink:0;margin-top:1px;">${typeEmoji}</span>
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:2px;">${name}</div>
-          <div style="font-size:11px;color:var(--t3);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${address}</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-  results.style.display='block';
-  // 存資料到 dataset 供 selectPlace 使用
-  results._data = data;
-}
-
-function selectPlace(idx){
-  const results = document.getElementById('search-results');
-  const item    = results._data[idx];
-  if(!item) return;
-
-  // 主要名稱（本地語言）
-  const name = item.name || item.display_name.split(',')[0];
-
-  // 嘗試取得英文副標題：
-  // 1. Nominatim 有時在 namedetails 回傳 name:en
-  // 2. 否則用 address 的第一段英文片段（移除日中韓文字）
-  let subtitle = '';
-  if(item.namedetails?.['name:en']){ subtitle = item.namedetails['name:en']; }
-  else if(item.namedetails?.['name:ja-Latn']){ subtitle = item.namedetails['name:ja-Latn']; }
-  else {
-    // 從 display_name 裡抓非中日韓文的第一段
-    const parts = item.display_name.split(',');
-    const engPart = parts.find(p=> /^[A-Za-z0-9\s\-'\.]+$/.test(p.trim()) && p.trim().length > 2);
-    subtitle = engPart ? engPart.trim() : '';
-  }
-
-  // 填入欄位
-  document.getElementById('inp-name').value = name;
-  document.getElementById('inp-sub').value  = subtitle;
-  document.getElementById('inp-lat').value  = item.lat;
-  document.getElementById('inp-lng').value  = item.lon;
-  document.getElementById('inp-search').value = '';
-
-  // 顯示已選地點確認條
-  results.style.display='none';
-  document.getElementById('selected-name-preview').textContent = name + (subtitle ? ` (${subtitle})` : '');
-  document.getElementById('selected-addr-preview').textContent = item.display_name;
-  document.getElementById('selected-place').style.display='block';
-
-  // 在地圖上預覽位置
-  if(leafletMap){
-    leafletMap.flyTo([parseFloat(item.lat), parseFloat(item.lon)], 16, {duration:1});
-  }
-}
-
-/* ── 付費切換 ── */
-function onFreeChange(val){
-  document.getElementById('price-field').style.display = val==='false' ? '' : 'none';
-}
-
-/* ── API Key 管理 ── */
-function getApiKey(){ return localStorage.getItem('gemini_api_key')||''; }
-
-function openApiKeyModal(){
-  const key = getApiKey();
-  document.getElementById('inp-apikey').value = key;
-  const status = document.getElementById('apikey-status');
-  status.textContent = key ? '✅ 已設定 Key（顯示已遮蔽）' : '';
-  status.style.color = '#66bb6a';
-  openModal('modal-apikey');
-}
-
-function saveApiKey(){
-  const key = document.getElementById('inp-apikey').value.trim();
-  // Gemini key 通常以 AIza 開頭，長度約39字元
-  if(key && !key.startsWith('AIza')){
-    showToast('⚠️ Gemini Key 格式不正確，應以 AIza 開頭'); return;
-  }
-  localStorage.setItem('gemini_api_key', key);
-  updateApiKeyBadge();
-  closeModal('modal-apikey');
-  showToast(key ? '✅ Gemini API Key 已儲存，AI 功能已啟用！' : '🗑️ API Key 已清除');
-}
-
-function updateApiKeyBadge(){
-  const badge = document.getElementById('badge-api');
-  if(!badge) return;
-  const hasKey = !!getApiKey();
-  badge.style.color       = hasKey ? '#66bb6a' : 'var(--amber)';
-  badge.style.borderColor = hasKey ? 'rgba(102,187,106,0.3)' : 'rgba(255,167,38,0.3)';
-  badge.title       = hasKey ? 'Gemini AI 功能已啟用 ✅' : '設定 Gemini API Key';
-  badge.textContent = hasKey ? '🤖 AI ✓' : '🤖 API';
-}
-
-/* ── AI 自動產生推薦亮點（Gemini 2.0 Flash）── */
-let _aiHighlights = [];
-
-async function generateHighlights(){
-  const apiKey = getApiKey();
-  if(!apiKey){
-    showToast('⚠️ 請先設定 Gemini API Key（點頂部 🤖 API 按鈕）');
-    openApiKeyModal(); return;
-  }
-  const name = document.getElementById('inp-name').value.trim();
-  const desc = document.getElementById('inp-desc').value.trim();
-  if(!name){ showToast('⚠️ 請先填入景點名稱'); return; }
-
-  const btn = document.getElementById('ai-highlights-btn');
-  btn.innerHTML = '⏳ AI 生成中...';
-  btn.style.pointerEvents = 'none';
-  document.getElementById('ai-highlights-preview').style.display='none';
-  _aiHighlights = [];
-
-  try{
-    const prompt = `你是旅遊達人。請為以下景點產生 3 條繁體中文「推薦亮點」。\n每條格式：「景點特色 — 補充說明」，整條不超過20字。\n景點名稱：${name}${desc?`\n景點簡介：${desc}`:''}\n直接輸出3條，每條一行，不加編號或符號。`;
-
-    // Gemini API：使用 gemini-2.5-flash 模型（最新版）
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
-      })
-    });
-
-    if(!res.ok){
-      const err = await res.json().catch(()=>({}));
-      throw new Error(err.error?.message || `HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    // Gemini 回傳結構：candidates[0].content.parts[0].text
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    _aiHighlights = text.split('\n').map(s=>s.trim()).filter(s=>s.length>3 && s.length<60);
-
-    if(_aiHighlights.length){
-      document.getElementById('ai-highlights-list').innerHTML =
-        _aiHighlights.map(h=>`<div style="padding:2px 0;">• ${h}</div>`).join('');
-      document.getElementById('ai-highlights-preview').style.display='';
-    } else {
-      showToast('⚠️ AI 回傳格式異常，請重試');
-    }
-  } catch(e){
-    console.error(e);
-    if(e.message?.includes('400') || e.message?.includes('API_KEY')){
-      showToast('⚠️ API Key 無效，請重新設定'); openApiKeyModal();
-    } else {
-      showToast(`⚠️ AI 錯誤：${e.message||'請稍後再試'}`);
-    }
-  } finally {
-    btn.innerHTML='🤖 AI 自動產生推薦亮點';
-    btn.style.pointerEvents='';
-  }
-}
-
-function acceptHighlights(){
-  // 將 AI 亮點存到臨時變數，saveStop 時一起寫入
-  document.getElementById('ai-highlights-preview').style.borderColor='rgba(102,187,106,0.4)';
-  document.getElementById('ai-highlights-preview').style.background='rgba(102,187,106,0.06)';
-  showToast('✅ 亮點已採用，儲存後生效');
-}
-
-function openAddModal(afterIdx){
-  editingStopId = null; insertAfterIdx = afterIdx;
-  _aiHighlights = [];
-  document.getElementById('stop-modal-title').textContent = '➕ 新增景點';
-  document.getElementById('stop-save-btn').textContent    = '✅ 新增';
-  // 清空所有欄位
-  ['inp-time','inp-name','inp-sub','inp-desc','inp-transport','inp-search','inp-lat','inp-lng','inp-price'].forEach(id=>{
-    const el = document.getElementById(id); if(el) el.value='';
-  });
-  document.getElementById('inp-type').value = 'sight';
-  document.getElementById('inp-free').value = 'true';
-  document.getElementById('price-field').style.display='none';
-  document.getElementById('search-results').style.display='none';
-  document.getElementById('selected-place').style.display='none';
-  document.getElementById('ai-highlights-preview').style.display='none';
-  document.getElementById('search-section').style.display='';
-  openModal('modal-stop');
-}
-
-function openEditModal(id){
-  const proj  = projects.find(p=>p.id===currentProjId);
-  const stops = (proj?.stops||{})[currentDay]||[];
-  const stop  = stops.find(s=>s.id===id);
-  if(!stop) return;
-  editingStopId = id;
-  _aiHighlights = [];
-  document.getElementById('stop-modal-title').textContent = '✏️ 編輯景點';
-  document.getElementById('stop-save-btn').textContent    = '💾 儲存';
-  document.getElementById('inp-time').value      = stop.time      ||'';
-  document.getElementById('inp-name').value      = stop.name      ||'';
-  document.getElementById('inp-sub').value       = stop.sub       ||'';
-  document.getElementById('inp-lat').value       = stop.lat       ||'';
-  document.getElementById('inp-lng').value       = stop.lng       ||'';
-  document.getElementById('inp-desc').value      = stop.desc      ||'';
-  document.getElementById('inp-transport').value = stop.transport ||'';
-  document.getElementById('inp-type').value      = stop.type      ||'sight';
-  document.getElementById('inp-price').value     = stop.price     ||'';
-  const freeVal = stop.free ? 'true':'false';
-  document.getElementById('inp-free').value = freeVal;
-  document.getElementById('price-field').style.display = stop.free ? 'none':'';
-  document.getElementById('ai-highlights-preview').style.display='none';
-  document.getElementById('search-section').style.display='none';
-  openModal('modal-stop');
-}
-
-function saveStop(){
-  const name = document.getElementById('inp-name').value.trim();
-  if(!name){ showToast('⚠️ 請輸入景點名稱'); return; }
-  const time      = document.getElementById('inp-time').value;
-  const sub       = document.getElementById('inp-sub').value.trim();
-  const desc      = document.getElementById('inp-desc').value.trim();
-  const transport = document.getElementById('inp-transport').value.trim();
-  const type      = document.getElementById('inp-type').value;
-  const free      = document.getElementById('inp-free').value === 'true';
-  const price     = document.getElementById('inp-price').value.trim();
-  const latVal    = document.getElementById('inp-lat').value;
-  const lngVal    = document.getElementById('inp-lng').value;
-
-  let lat = latVal ? parseFloat(latVal) : null;
-  let lng = lngVal ? parseFloat(lngVal) : null;
-  if(isNaN(lat)) lat=null; if(isNaN(lng)) lng=null;
-
-  // 如果使用者按了「採用亮點」且有 AI 亮點，就用 AI 的；否則保留原有
-  const highlights = _aiHighlights.length ? _aiHighlights : undefined;
-
-  const proj = projects.find(p=>p.id===currentProjId);
-  if(!proj.stops[currentDay]) proj.stops[currentDay]=[];
-  const stops = proj.stops[currentDay];
-
-  if(editingStopId){
-    const stop = stops.find(s=>s.id===editingStopId);
-    if(stop){
-      Object.assign(stop,{time,name,sub,desc,type,free,price,transport,lat,lng});
-      if(highlights) stop.highlights = highlights;
-    }
-    showToast('✅ 景點已更新');
-  } else {
-    const ns = {id:genId(),time,name,sub,desc,type,free,price,highlights:highlights||[],transport,lat,lng};
-    if(insertAfterIdx<0||insertAfterIdx>=stops.length-1) stops.push(ns);
-    else stops.splice(insertAfterIdx+1,0,ns);
-    showToast('✅ 景點已新增');
-  }
-  saveProjects();
-  closeModal('modal-stop');
-  renderTimeline();
-  if(leafletMap) updateMapMarkers();
-}
-
-function deleteStop(id){
-  if(!confirm('確定要刪除這個景點嗎？')) return;
-  const proj = projects.find(p=>p.id===currentProjId);
-  proj.stops[currentDay] = (proj.stops[currentDay]||[]).filter(s=>s.id!==id);
-  saveProjects();
-  renderTimeline();
-  if(leafletMap) updateMapMarkers();
-  showToast('🗑️ 景點已刪除');
-}
-
-/* ═══════════════════════════════════════════════════════════
-   拖拉排序
-═══════════════════════════════════════════════════════════ */
 function initSortable(){
   if(sortable){ sortable.destroy(); sortable=null; }
   const tl = document.getElementById('timeline');
@@ -1442,15 +839,15 @@ function initSortable(){
     animation:180, handle:'.stop-card', draggable:'.stop-row',
     ghostClass:'sortable-ghost', chosenClass:'sortable-chosen',
     disabled:!sortMode,
-    onEnd(evt){
+    async onEnd(evt){
       const proj  = projects.find(p=>p.id===currentProjId);
       const stops = (proj?.stops||{})[currentDay]||[];
       const ids   = [...tl.querySelectorAll('.stop-row')].map(r=>r.getAttribute('data-id'));
       proj.stops[currentDay] = ids.map(id=>stops.find(s=>s.id===id)).filter(Boolean);
-      saveProjects();
+      await saveProjects();
       renderTimeline();
       if(leafletMap) updateMapMarkers();
-      showToast('✅ 排序已更新');
+      showToast('✅ 排序已同步至雲端');
     }
   });
 }
@@ -1469,23 +866,254 @@ function toggleSortMode(){
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Modal 控制
+   景點增刪改
 ═══════════════════════════════════════════════════════════ */
+function genId(){ return 's'+Date.now()+Math.random().toString(36).slice(2,6); }
+
+function openAddModal(afterIdx){
+  editingStopId = null; insertAfterIdx = afterIdx;
+  _aiHighlights = [];
+  document.getElementById('stop-modal-title').textContent = '➕ 新增景點';
+  document.getElementById('stop-save-btn').textContent    = '✅ 新增';
+  ['inp-time','inp-name','inp-sub','inp-desc','inp-transport','inp-search','inp-lat','inp-lng','inp-price'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('inp-type').value = 'sight'; document.getElementById('inp-free').value = 'true';
+  document.getElementById('price-field').style.display='none';
+  document.getElementById('search-results').style.display='none';
+  document.getElementById('selected-place').style.display='none';
+  document.getElementById('ai-highlights-preview').style.display='none';
+  document.getElementById('search-section').style.display='';
+  openModal('modal-stop');
+}
+
+function openEditModal(id){
+  const proj  = projects.find(p=>p.id===currentProjId);
+  const stop  = ((proj?.stops||{})[currentDay]||[]).find(s=>s.id===id);
+  if(!stop) return;
+  editingStopId = id; _aiHighlights = [];
+  document.getElementById('stop-modal-title').textContent = '✏️ 編輯景點';
+  document.getElementById('stop-save-btn').textContent    = '💾 儲存';
+  document.getElementById('inp-time').value = stop.time||''; document.getElementById('inp-name').value = stop.name||'';
+  document.getElementById('inp-sub').value = stop.sub||''; document.getElementById('inp-lat').value = stop.lat||'';
+  document.getElementById('inp-lng').value = stop.lng||''; document.getElementById('inp-desc').value = stop.desc||'';
+  document.getElementById('inp-transport').value = stop.transport||''; document.getElementById('inp-type').value = stop.type||'sight';
+  document.getElementById('inp-price').value = stop.price||'';
+  document.getElementById('inp-free').value = stop.free ? 'true':'false';
+  document.getElementById('price-field').style.display = stop.free ? 'none':'';
+  document.getElementById('ai-highlights-preview').style.display='none';
+  document.getElementById('search-section').style.display='none';
+  openModal('modal-stop');
+}
+
+async function saveStop(){
+  const name = document.getElementById('inp-name').value.trim();
+  if(!name){ showToast('⚠️ 請輸入景點名稱'); return; }
+  const time = document.getElementById('inp-time').value;
+  const sub = document.getElementById('inp-sub').value.trim();
+  const desc = document.getElementById('inp-desc').value.trim();
+  const transport = document.getElementById('inp-transport').value.trim();
+  const type = document.getElementById('inp-type').value;
+  const free = document.getElementById('inp-free').value === 'true';
+  const price = document.getElementById('inp-price').value.trim();
+  let lat = parseFloat(document.getElementById('inp-lat').value); if(isNaN(lat)) lat=null;
+  let lng = parseFloat(document.getElementById('inp-lng').value); if(isNaN(lng)) lng=null;
+
+  const highlights = _aiHighlights.length ? _aiHighlights : undefined;
+  const proj = projects.find(p=>p.id===currentProjId);
+  if(!proj.stops[currentDay]) proj.stops[currentDay]=[];
+  const stops = proj.stops[currentDay];
+
+  if(editingStopId){
+    const stop = stops.find(s=>s.id===editingStopId);
+    if(stop){
+      Object.assign(stop,{time,name,sub,desc,type,free,price,transport,lat,lng});
+      if(highlights) stop.highlights = highlights;
+    }
+    showToast('✅ 景點已更新');
+  } else {
+    const ns = {id:genId(),time,name,sub,desc,type,free,price,highlights:highlights||[],transport,lat,lng};
+    if(insertAfterIdx<0||insertAfterIdx>=stops.length-1) stops.push(ns);
+    else stops.splice(insertAfterIdx+1,0,ns);
+    showToast('✅ 景點已新增');
+  }
+  
+  await saveProjects();
+  closeModal('modal-stop');
+  renderTimeline();
+  if(leafletMap) updateMapMarkers();
+}
+
+async function deleteStop(id){
+  if(!confirm('確定要刪除這個景點嗎？')) return;
+  const proj = projects.find(p=>p.id===currentProjId);
+  proj.stops[currentDay] = (proj.stops[currentDay]||[]).filter(s=>s.id!==id);
+  await saveProjects();
+  renderTimeline();
+  if(leafletMap) updateMapMarkers();
+  showToast('🗑️ 景點已刪除');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AI 功能 (Gemini) 與搜尋
+═══════════════════════════════════════════════════════════ */
+function getApiKey(){ return localStorage.getItem('gemini_api_key')||''; }
+function openApiKeyModal(){
+  const key = getApiKey();
+  document.getElementById('inp-apikey').value = key;
+  const status = document.getElementById('apikey-status');
+  status.textContent = key ? '✅ 已設定 Key' : '';
+  status.style.color = '#66bb6a';
+  openModal('modal-apikey');
+}
+function saveApiKey(){
+  const key = document.getElementById('inp-apikey').value.trim();
+  localStorage.setItem('gemini_api_key', key);
+  updateApiKeyBadge(); closeModal('modal-apikey'); showToast('✅ 儲存成功');
+}
+function updateApiKeyBadge(){
+  const badge = document.getElementById('badge-api'); if(!badge) return;
+  const hasKey = !!getApiKey();
+  badge.style.color = hasKey ? '#66bb6a' : 'var(--amber)';
+  badge.style.borderColor = hasKey ? 'rgba(102,187,106,0.3)' : 'rgba(255,167,38,0.3)';
+  badge.textContent = hasKey ? '🤖 AI ✓' : '🤖 API';
+}
+
+let _aiHighlights = [];
+async function generateHighlights(){
+  const apiKey = getApiKey();
+  if(!apiKey){ showToast('⚠️ 請先設定 Gemini API Key'); openApiKeyModal(); return; }
+  const name = document.getElementById('inp-name').value.trim();
+  const desc = document.getElementById('inp-desc').value.trim();
+  if(!name){ showToast('⚠️ 請先填入景點名稱'); return; }
+
+  const btn = document.getElementById('ai-highlights-btn');
+  btn.innerHTML = '⏳ AI 生成中...'; btn.style.pointerEvents = 'none';
+  document.getElementById('ai-highlights-preview').style.display='none';
+  _aiHighlights = [];
+
+  try{
+    const prompt = `你是旅遊達人。請為以下景點產生 3 條繁體中文「推薦亮點」。每條不超過20字。景點名稱：${name}${desc?`\n簡介：${desc}`:''}\n直接輸出3條，不加編號。`;
+    // 更新為 2026 年最新預覽版模型
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 300 } })
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    _aiHighlights = text.split('\n').map(s=>s.trim()).filter(s=>s.length>3);
+
+    if(_aiHighlights.length){
+      document.getElementById('ai-highlights-list').innerHTML = _aiHighlights.map(h=>`<div style="padding:2px 0;">• ${h}</div>`).join('');
+      document.getElementById('ai-highlights-preview').style.display='';
+    } else showToast('⚠️ AI 回傳格式異常');
+  } catch(e){
+    console.error(e); showToast(`⚠️ AI 錯誤`);
+  } finally {
+    btn.innerHTML='🤖 AI 自動產生推薦亮點'; btn.style.pointerEvents='';
+  }
+}
+function acceptHighlights(){
+  document.getElementById('ai-highlights-preview').style.borderColor='rgba(102,187,106,0.4)';
+  document.getElementById('ai-highlights-preview').style.background='rgba(102,187,106,0.06)';
+  showToast('✅ 亮點已採用');
+}
+
+let _searchTimer = null;
+function onSearchInput(val){
+  clearTimeout(_searchTimer);
+  if(!val || val.length < 2) { document.getElementById('search-results').style.display='none'; return; }
+  document.getElementById('search-spinner').style.display='';
+  _searchTimer = setTimeout(()=> doSearch(val), 500);
+}
+async function doSearch(q){
+  const spinner = document.getElementById('search-spinner');
+  try{
+    const proj = projects.find(p=>p.id===currentProjId);
+    const center = proj?.mapCenter || [35.6812,139.7671];
+    const vb = `${center[1]-2},${center[0]-2},${center[1]+2},${center[0]+2}`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&namedetails=1&viewbox=${vb}&bounded=0`;
+    const res  = await fetch(url, {headers:{'Accept-Language':'zh-TW,en'}});
+    const data = await res.json();
+    spinner.style.display='none'; renderSearchResults(data);
+  } catch(e){ spinner.style.display='none'; }
+}
+function renderSearchResults(data){
+  const results = document.getElementById('search-results');
+  if(!data.length){ results.innerHTML = `<div style="padding:14px;text-align:center;color:var(--t3);font-size:13px;">😕 找不到結果</div>`; results.style.display='block'; return; }
+  results.innerHTML = data.map((item,i)=>{
+    const name = item.name || item.display_name.split(',')[0];
+    return `<div onclick="selectPlace(${i})" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;">
+      <div style="font-size:13px;font-weight:600;color:var(--t1);">${name}</div>
+      <div style="font-size:11px;color:var(--t3);">${item.display_name}</div>
+    </div>`;
+  }).join('');
+  results.style.display='block'; results._data = data;
+}
+function selectPlace(idx){
+  const item = document.getElementById('search-results')._data[idx];
+  document.getElementById('inp-name').value = item.name || item.display_name.split(',')[0];
+  document.getElementById('inp-lat').value  = item.lat; document.getElementById('inp-lng').value  = item.lon;
+  document.getElementById('search-results').style.display='none';
+  document.getElementById('selected-place').style.display='block';
+  document.getElementById('selected-name-preview').textContent = document.getElementById('inp-name').value;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Leaflet 地圖功能
+═══════════════════════════════════════════════════════════ */
+function initLeafletMap(){
+  if(leafletMap){ leafletMap.invalidateSize(); updateMapMarkers(); return; }
+  const proj = projects.find(p=>p.id===currentProjId);
+  leafletMap = L.map('leaflet-map',{ center: proj?.mapCenter||[33.5902, 130.4017], zoom:14 });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom:19 }).addTo(leafletMap);
+  markersLayer = L.layerGroup().addTo(leafletMap);
+  updateMapMarkers();
+}
+function makeIcon(color, num){
+  return L.divIcon({ className:'', html:`<div style="width:34px;height:34px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;border:2px solid rgba(255,255,255,0.3);">${num}</div>`, iconSize:[34,34], iconAnchor:[17,17] });
+}
+function updateMapMarkers(){
+  if(!leafletMap || !markersLayer) return;
+  markersLayer.clearLayers();
+  const proj  = projects.find(p=>p.id===currentProjId);
+  const stops = (proj?.stops||{})[currentDay]||[];
+  const latlngs = [];
+  stops.forEach((stop,idx)=>{
+    if(!stop.lat || !stop.lng) return;
+    const ll = [stop.lat, stop.lng];
+    const marker = L.marker(ll, {icon: makeIcon('#ffa726', idx+1)}).bindPopup(`<b>${stop.name}</b>`);
+    markersLayer.addLayer(marker); latlngs.push(ll);
+  });
+  if(latlngs.length>1) L.polyline(latlngs,{color:'rgba(240,98,146,0.7)',weight:2.5,dashArray:'6 4'}).addTo(markersLayer);
+  if(latlngs.length) try{ leafletMap.fitBounds(L.latLngBounds(latlngs).pad(0.2)); }catch(e){}
+}
+function flyToStop(stopId){
+  const stop = ((projects.find(p=>p.id===currentProjId)?.stops||{})[currentDay]||[]).find(s=>s.id===stopId);
+  if(!stop?.lat) return;
+  switchView('map');
+  setTimeout(()=> leafletMap.flyTo([stop.lat,stop.lng],16),200);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   工具與初始化
+═══════════════════════════════════════════════════════════ */
+function onFreeChange(val){ document.getElementById('price-field').style.display = val==='false' ? '' : 'none'; }
 function openModal(id){ document.getElementById(id).classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 function closeModalIfBg(e,id){ if(e.target===document.getElementById(id)) closeModal(id); }
-
-/* ─── Toast ─── */
 let _toastT;
 function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(_toastT); _toastT=setTimeout(()=>t.classList.remove('show'),2600);
 }
 
-/* ── 初始化 ── */
+// 🚀 啟動應用程式
 document.getElementById('fab').style.display='none';
-renderHome();
+loadProjects(); // 觸發非同步的雲端載入
+
 </script>
 </body>
 </html>
